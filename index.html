@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swastik AI - AI Diagnostic Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+        }
+        
+        .chat-container {
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #4a90e2 #e1f0ff;
+            scroll-behavior: smooth;
+            padding-bottom: 80px;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: #e1f0ff;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #4a90e2;
+            border-radius: 3px;
+        }
+        
+        .user-message {
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 18px 18px 0 18px;
+            transition: all 0.3s ease;
+            transform-origin: right bottom;
+        }
+        
+        .bot-message {
+            background-color: white;
+            color: #333;
+            border-radius: 18px 18px 18px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            transform-origin: left bottom;
+        }
+        
+        .typing-indicator {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            margin: 0 3px;
+            opacity: 0.4;
+        }
+        
+        .typing-indicator span:nth-child(1) {
+            animation: bounce 1s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation: bounce 1s infinite 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation: bounce 1s infinite 0.4s;
+        }
+        
+        @keyframes bounce {
+            0%, 100% {
+                opacity: 0.4;
+                transform: translateY(0);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-5px);
+            }
+        }
+        
+        .symptom-chip {
+            transition: all 0.2s ease;
+        }
+        
+        .symptom-chip:hover {
+            transform: scale(1.05);
+        }
+        
+        .emergency-button {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+            }
+        }
+        
+        .diagnosis-card {
+            transition: all 0.3s ease;
+        }
+        
+        .diagnosis-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-teal-500 to-blue-600 text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/15be1543-6ecd-467c-9e89-25907ead7fae.png" alt="Swastik AI Logo" class="h-10 w-10 rounded-full">
+                    <h1 class="text-xl font-bold">Swastik AI</h1>
+                </div>
+                <div class="hidden md:flex space-x-4 items-center">
+                    <button id="emergency-btn" class="emergency-button bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-semibold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v4a1 1 0 102 0V5zm-1 7a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Emergency Assistance
+                    </button>
+                    <button id="language-switcher" class="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-50">
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 5a1 1 0 100 2h1a2 2 0 011.732 1H7a1 1 0 100 2h2.732A2 2 0 018 11H7a1 1 0 00-.707 1.707l3 3a1 1 0 001.414-1.414l-1.483-1.484A4.008 4.008 0 0011.874 10H13a1 1 0 100-2h-1.126a3.976 3.976 0 00-.41-1H13a1 1 0 100-2H7z" clip-rule="evenodd" />
+                            </svg>
+                            हिंदी (Hindi)
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Chat Area -->
+        <div class="container mx-auto flex-1 flex flex-col overflow-hidden px-4 py-4">
+            <!-- Symptoms Selection (Initial View) -->
+            <div id="symptom-selection" class="bg-white rounded-lg shadow-md p-6 mb-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">How can we help you today?</h2>
+                <p class="text-gray-600 mb-6">Please select the symptoms you're experiencing or describe your health concern below:</p>
+                
+                <div class="mb-6">
+                    <h3 class="text-md font-medium text-gray-700 mb-3">Common Symptoms</h3>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button onclick="addSymptom('fever')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Fever
+                        </button>
+                        <button onclick="addSymptom('headache')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Headache
+                        </button>
+                        <button onclick="addSymptom('cough')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Cough
+                        </button>
+                        <button onclick="addSymptom('rash')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Rash/Skin Problems
+                        </button>
+                        <button onclick="addSymptom('stomach-pain')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Stomach Pain
+                        </button>
+                        <button onclick="addSymptom('fatigue')" class="symptom-chip bg-blue-100 text-blue-800 px-4 py-2 rounded-full hover:bg-blue-200 transition">
+                            Fatigue/Weakness
+                        </button>
+                    </div>
+                    
+                    <h3 class="text-md font-medium text-gray-700 mb-3">Chronic Conditions</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="addSymptom('diabetes')" class="symptom-chip bg-purple-100 text-purple-800 px-4 py-2 rounded-full hover:bg-purple-200 transition">
+                            Diabetes
+                        </button>
+                        <button onclick="addSymptom('hypertension')" class="symptom-chip bg-purple-100 text-purple-800 px-4 py-2 rounded-full hover:bg-purple-200 transition">
+                            High Blood Pressure
+                        </button>
+                        <button onclick="addSymptom('asthma')" class="symptom-chip bg-purple-100 text-purple-800 px-4 py-2 rounded-full hover:bg-purple-200 transition">
+                            Asthma/Breathing Problems
+                        </button>
+                        <button onclick="addSymptom('arthritis')" class="symptom-chip bg-purple-100 text-purple-800 px-4 py-2 rounded-full hover:bg-purple-200 transition">
+                            Joint Pain/Arthritis
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="custom-symptom-input" class="block text-sm font-medium text-gray-700 mb-2">Or describe your symptoms:</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="custom-symptom-input" placeholder="E.g. burning sensation while urinating..." class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="addCustomSymptom()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Add</button>
+                    </div>
+                </div>
+                
+                <div id="selected-symptoms-container" class="mb-6 hidden">
+                    <h3 class="text-md font-medium text-gray-700 mb-2">Selected Symptoms</h3>
+                    <div id="selected-symptoms" class="flex flex-wrap gap-2"></div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="analyze-btn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Analyze Symptoms
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Interface (Hidden Initially) -->
+            <div id="chat-interface" class="hidden flex-1 flex flex-col bg-white rounded-lg shadow-md overflow-hidden">
+                <!-- Chat Header -->
+                <div class="bg-blue-600 text-white p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/2faac6d2-e9a8-45b5-8986-eb30d66abb1d.png" alt="Dr. Chatbot avatar - Friendly AI doctor with stethoscope" class="h-10 w-10 rounded-full">
+                        <h2 class="text-lg font-semibold">Swastik AI Assistant</h2>
+                    </div>
+                    <button id="back-to-symptoms" class="text-white bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded-full text-sm">
+                        Back to Symptoms
+                    </button>
+                </div>
+                
+                <!-- Chat Messages -->
+                <div id="chat-container" class="chat-container flex-1 p-4 space-y-3 overflow-y-auto">
+                    <!-- Messages will appear here -->
+                </div>
+                
+                <!-- Chat Input -->
+                <div class="border-t border-gray-200 p-4">
+                    <div class="flex space-x-2">
+                        <input type="text" id="user-input" placeholder="Type your message here..." class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                        <button id="send-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                            </svg>
+                        </button>
+                        <button id="audio-input-btn" class="bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnosis Results (Hidden Initially) -->
+            <div id="diagnosis-results" class="hidden bg-white rounded-lg shadow-md p-6 mt-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Diagnosis Results</h2>
+                    <button id="chat-with-dr" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        Chat with Swastik AI
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="diagnosis-card bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h3 class="text-lg font-medium text-blue-800 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            Possible Conditions
+                        </h3>
+                        <ul class="list-disc list-inside text-blue-700 pl-2">
+                            <li>Viral Fever (65% confidence)</li>
+                            <li>Seasonal Allergy (25% confidence)</li>
+                            <li>Common Cold (10% confidence)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="diagnosis-card bg-green-50 p-4 rounded-lg border border-green-100">
+                        <h3 class="text-lg font-medium text-green-800 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                            </svg>
+                            Recommended Actions
+                        </h3>
+                        <ul class="list-disc list-inside text-green-700 pl-2">
+                            <li>Rest and drink plenty of fluids</li>
+                            <li>Take paracetamol for fever (500mg every 6 hours)</li>
+                            <li>Monitor temperature</li>
+                            <li>Consult doctor if fever persists beyond 3 days</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="diagnosis-card bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+                        <h3 class="text-lg font-medium text-yellow-800 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 000-1.788l-4.764-2.382a1 1 0 00-.894 0L4.789 4.488a1 1 0 000 1.788l4.764 2.382a1 1 0 00.894 0l4.764-2.382zM4.447 8.342A1 1 0 003 9.236V15a1 1 0 00.553.894l4 2A1 1 0 009 17v-5.764a1 1 0 00-.553-.894l-4-2z" />
+                            </svg>
+                            Home Remedies
+                        </h3>
+                        <ul class="list-disc list-inside text-yellow-700 pl-2">
+                            <li>Ginger tea for sore throat</li>
+                            <li>Turmeric milk before bed</li>
+                            <li>Steam inhalation to relieve congestion</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="diagnosis-card bg-purple-50 p-4 rounded-lg border border-purple-100">
+                        <h3 class="text-lg font-medium text-purple-800 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                            </svg>
+                            Nearby Healthcare
+                        </h3>
+                        <ul class="list-disc list-inside text-purple-700 pl-2">
+                            <li>Closest Primary Health Center: 5 km away</li>
+                            <li>24x7 Telemedicine Available</li>
+                            <li>Dr. Sharma (General Physician) - Available tomorrow</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-100 p-4 border-t border-gray-200">
+            <div class="container mx-auto text-center text-gray-600 text-sm">
+                <p>Swastik AI is not a substitute for professional medical advice. Always consult a healthcare provider.</p>
+                <p class="mt-1">© 2023 Swastik AI. Powered by AI & Machine Learning.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // API configuration
+        const API_BASE_URL = 'http://localhost:5000/api';
+        const selectedSymptoms = [];
+        
+        // DOM elements
+        const symptomSelection = document.getElementById('symptom-selection');
+        const chatInterface = document.getElementById('chat-interface');
+        const diagnosisResults = document.getElementById('diagnosis-results');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const selectedSymptomsContainer = document.getElementById('selected-symptoms-container');
+        const selectedSymptomsEl = document.getElementById('selected-symptoms');
+        const customSymptomInput = document.getElementById('custom-symptom-input');
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const backToSymptoms = document.getElementById('back-to-symptoms');
+        const chatWithDr = document.getElementById('chat-with-dr');
+        const emergencyBtn = document.getElementById('emergency-btn');
+        
+        // Add symptom from buttons
+        function addSymptom(symptom) {
+            if (!selectedSymptoms.includes(symptom)) {
+                selectedSymptoms.push(symptom);
+                updateSelectedSymptomsUI();
+            }
+        }
+        
+        // Add custom symptom from input
+        function addCustomSymptom() {
+            const symptom = customSymptomInput.value.trim();
+            if (symptom && !selectedSymptoms.includes(symptom)) {
+                selectedSymptoms.push(symptom);
+                customSymptomInput.value = '';
+                updateSelectedSymptomsUI();
+            }
+        }
+        
+        // Update the UI with selected symptoms
+        function updateSelectedSymptomsUI() {
+            if (selectedSymptoms.length > 0) {
+                selectedSymptomsContainer.classList.remove('hidden');
+                selectedSymptomsEl.innerHTML = '';
+                
+                selectedSymptoms.forEach((symptom, index) => {
+                    const symptomEl = document.createElement('div');
+                    symptomEl.className = 'bg-blue-600 text-white px-3 py-1 rounded-full flex items-center';
+                    symptomEl.innerHTML = `
+                        ${symptom.replace(/-/g, ' ')}
+                        <button onclick="removeSymptom(${index})" class="ml-1 text-white hover:text-blue-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    `;
+                    selectedSymptomsEl.appendChild(symptomEl);
+                });
+                
+                analyzeBtn.disabled = false;
+            } else {
+                selectedSymptomsContainer.classList.add('hidden');
+                analyzeBtn.disabled = true;
+            }
+        }
+        
+        // Remove symptom
+        function removeSymptom(index) {
+            selectedSymptoms.splice(index, 1);
+            updateSelectedSymptomsUI();
+        }
+        
+        // Analyze symptoms button click
+        analyzeBtn.addEventListener('click', () => {
+            symptomSelection.classList.add('hidden');
+            diagnosisResults.classList.remove('hidden');
+            
+            // Call backend API for diagnosis
+            fetch(`${API_BASE_URL}/analyze-symptoms`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    symptoms: selectedSymptoms
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update UI with diagnosis results
+                document.getElementById('possible-conditions').innerHTML = data.conditions.map(c => 
+                    `<li>${c.name} (${c.confidence}% confidence)</li>`).join('');
+                document.getElementById('recommended-actions').innerHTML = data.actions.map(a => 
+                    `<li>${a}</li>`).join('');
+                document.getElementById('home-remedies').innerHTML = data.remedies.map(r => 
+                    `<li>${r}</li>`).join('');
+            })
+            .catch(error => {
+                console.error('Error analyzing symptoms:', error);
+            });
+        });
+        
+        // Chat with doctor button
+        chatWithDr.addEventListener('click', () => {
+            diagnosisResults.classList.add('hidden');
+            chatInterface.classList.remove('hidden');
+            
+            // Add greeting message
+            addBotMessage("Hello! I'm your Swastik AI assistant. I'll help answer any health questions you have. What would you like to know?");
+        });
+        
+        // Back to symptoms button
+        backToSymptoms.addEventListener('click', () => {
+            chatInterface.classList.add('hidden');
+            diagnosisResults.classList.remove('hidden');
+        });
+        
+        // Emergency button
+        emergencyBtn.addEventListener('click', () => {
+            alert("Emergency contact triggered! Connecting you to the nearest medical help. Please share your location when prompted.");
+            // In a real implementation, this would connect to emergency services
+        });
+        
+        // Send message button
+        sendBtn.addEventListener('click', sendMessage);
+        
+        // Handle Enter key in input
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Send message function
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message) {
+                addUserMessage(message);
+                userInput.value = '';
+                
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing-indicator flex justify-start pl-2';
+                typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+                chatContainer.appendChild(typingIndicator);
+                
+                // Scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Simulate bot response after delay
+                setTimeout(() => {
+                    // Remove typing indicator
+                    chatContainer.removeChild(typingIndicator);
+                    
+                    // Call backend chat API
+                    fetch(`${API_BASE_URL}/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            symptoms: selectedSymptoms
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        addBotMessage(data.response);
+                    })
+                    .catch(error => {
+                        console.error('Chat error:', error);
+                        addBotMessage("I'm having trouble connecting to the service. Please try again later.");
+                    });
+                }, 1500);
+            }
+        }
+        
+        // Add user message to chat
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-end';
+            messageDiv.innerHTML = `
+                <div class="user-message max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg shadow-sm">
+                    ${text}
+                </div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Add bot message to chat
+        function addBotMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-start';
+            messageDiv.innerHTML = `
+                <div class="bot-message max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg shadow-sm">
+                    ${text}
+                </div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Simulate bot responses (in a real app, replace with API calls to your AI model)
+        function getBotResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('fever') || lowerMessage.includes('temperature')) {
+                return "For fever, I recommend taking paracetamol (500mg every 6 hours), drinking plenty of fluids, and resting. If your fever persists beyond 3 days or goes above 103°F (39.4°C), please consult a doctor immediately.";
+            } else if (lowerMessage.includes('headache') || lowerMessage.includes('pain')) {
+                return "Headaches can be managed with rest in a quiet, dark room and over-the-counter pain relievers like paracetamol or ibuprofen. Avoid caffeine and stay hydrated. If headaches are severe or persistent, medical evaluation is important.";
+            } else if (lowerMessage.includes('medicine') || lowerMessage.includes('drug') || lowerMessage.includes('tablet')) {
+                return "I recommend consulting with a healthcare provider before taking any medications, as they can advise on proper dosage and potential interactions based on your medical history.";
+            } else if (lowerMessage.includes('doctor') || lowerMessage.includes('consult')) {
+                return "The nearest primary health center is about 5 km from your location. Would you like me to connect you with a telemedicine service right now?";
+            } else if (lowerMessage.includes('emergency') || lowerMessage.includes('urgent')) {
+                return "For emergencies, please use the Emergency Assistance button at the top of the screen. It will connect you directly with local medical services.";
+            } else if (lowerMessage.includes('thank')) {
+                return "You're welcome! Is there anything else I can help you with regarding your health?";
+            } else {
+                return "Thank you for your question. I recommend monitoring your symptoms and consulting with a healthcare provider. Would you like me to connect you with telemedicine services for further assistance?";
+            }
+        }
+        
+        // Initialize UI
+        updateSelectedSymptomsUI();
+    </script>
+</body>
+</html>
